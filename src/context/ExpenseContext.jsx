@@ -28,13 +28,26 @@ export const ExpenseProvider = ({ children }) => {
             const now = new Date();
             const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
+
             console.log('[Notification] Current time:', currentTime, 'Target time:', time);
 
-            if (currentTime === time) {
+            // Check if we're at the target time
+            const [targetHour, targetMin] = time.split(':').map(Number);
+            const currentHour = now.getHours();
+            const currentMin = now.getMinutes();
+
+            console.log('[Notification] Target Hour:', targetHour, 'Target Min:', targetMin);
+            console.log('[Notification] Current Hour:', currentHour, 'Current Min:', currentMin);
+
+            const isTimeMatch = currentHour === targetHour && currentMin === targetMin;
+
+            console.log('[Notification] Time match:', isTimeMatch, 'Hour match:', currentHour === targetHour, 'Min match:', currentMin === targetMin);
+
+            if (isTimeMatch) {
                 const lastNotified = localStorage.getItem('lastNotifiedDate');
                 const todayStr = now.toDateString();
 
-                console.log('[Notification] Time match! Last notified:', lastNotified, 'Today:', todayStr);
+                console.log('[Notification] Last notified:', lastNotified, 'Today:', todayStr);
 
                 if (lastNotified !== todayStr) {
                     // Check for expenses today
@@ -53,14 +66,20 @@ export const ExpenseProvider = ({ children }) => {
                             console.log('[Notification] Sending notification...');
                             new Notification('Gider Hatırlatması', {
                                 body: `Bugün ödemeniz var: ${title} - Toplam: ${total} TL`,
-                                icon: '/pwa-192x192.png'
+                                icon: '/pwa-192x192.png',
+                                tag: 'expense-reminder',
+                                requireInteraction: false
                             });
                         } else {
                             console.log('[Notification] Permission not granted');
                         }
 
                         localStorage.setItem('lastNotifiedDate', todayStr);
+                    } else {
+                        console.log('[Notification] No unpaid expenses for today');
                     }
+                } else {
+                    console.log('[Notification] Already notified today');
                 }
             }
         };
@@ -68,7 +87,8 @@ export const ExpenseProvider = ({ children }) => {
         // Check immediately on load
         checkNotifications();
 
-        const interval = setInterval(checkNotifications, 60000); // Check every minute
+        // Check every 10 seconds for more reliable timing
+        const interval = setInterval(checkNotifications, 10000);
 
         return () => clearInterval(interval);
     }, [expenses]);
