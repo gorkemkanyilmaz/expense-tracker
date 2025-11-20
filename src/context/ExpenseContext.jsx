@@ -21,15 +21,20 @@ export const ExpenseProvider = ({ children }) => {
     useEffect(() => {
         const checkNotifications = () => {
             const enabled = localStorage.getItem('notificationsEnabled') === 'true';
+            console.log('[Notification] Enabled:', enabled);
             if (!enabled) return;
 
             const time = localStorage.getItem('notificationTime') || '09:00';
             const now = new Date();
             const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
+            console.log('[Notification] Current time:', currentTime, 'Target time:', time);
+
             if (currentTime === time) {
                 const lastNotified = localStorage.getItem('lastNotifiedDate');
                 const todayStr = now.toDateString();
+
+                console.log('[Notification] Time match! Last notified:', lastNotified, 'Today:', todayStr);
 
                 if (lastNotified !== todayStr) {
                     // Check for expenses today
@@ -38,15 +43,20 @@ export const ExpenseProvider = ({ children }) => {
                         return d.toDateString() === todayStr && !exp.isPaid;
                     });
 
+                    console.log('[Notification] Today expenses:', todayExpenses.length);
+
                     if (todayExpenses.length > 0) {
                         const total = todayExpenses.reduce((sum, e) => sum + e.amount, 0);
                         const title = todayExpenses.length === 1 ? todayExpenses[0].title : `${todayExpenses.length} Adet Gider`;
 
                         if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                            console.log('[Notification] Sending notification...');
                             new Notification('Gider Hatırlatması', {
                                 body: `Bugün ödemeniz var: ${title} - Toplam: ${total} TL`,
-                                icon: '/vite.svg' // Placeholder icon
+                                icon: '/pwa-192x192.png'
                             });
+                        } else {
+                            console.log('[Notification] Permission not granted');
                         }
 
                         localStorage.setItem('lastNotifiedDate', todayStr);
@@ -55,9 +65,10 @@ export const ExpenseProvider = ({ children }) => {
             }
         };
 
+        // Check immediately on load
+        checkNotifications();
+
         const interval = setInterval(checkNotifications, 60000); // Check every minute
-        // Also check immediately on load/change
-        // checkNotifications(); 
 
         return () => clearInterval(interval);
     }, [expenses]);
