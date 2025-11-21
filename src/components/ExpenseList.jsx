@@ -252,6 +252,9 @@ const ExpenseList = ({ expenses, onMarkAsPaid, onEdit, onDelete }) => {
         }
 
         .expense-item-container.paid {
+          /* Remove opacity from container to keep background solid */
+        }
+        .expense-item-container.paid > * {
           opacity: 0.5;
         }
         .expense-item-container.paid .expense-title,
