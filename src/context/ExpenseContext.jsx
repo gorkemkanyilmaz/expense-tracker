@@ -134,10 +134,18 @@ export const ExpenseProvider = ({ children }) => {
         // Handle recurrence
         if (isRecurring && recurrenceDuration > 1) {
             const recurrenceId = newExpenses[0].recurrenceId;
+            const startDay = startDate.getDate();
 
             for (let i = 1; i < recurrenceDuration; i++) {
                 const nextDate = new Date(startDate);
                 nextDate.setMonth(startDate.getMonth() + i);
+
+                // Check for month overflow (e.g., Jan 31 -> Feb 28/29)
+                // If the day is different from the start day, it means we overflowed
+                if (nextDate.getDate() !== startDay) {
+                    // Set to the last day of the previous month (which is the target month)
+                    nextDate.setDate(0);
+                }
 
                 newExpenses.push({
                     id: generateId(),

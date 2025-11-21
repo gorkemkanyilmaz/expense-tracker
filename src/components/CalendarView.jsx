@@ -3,7 +3,7 @@ import { useExpenses } from '../context/ExpenseContext';
 import ExpenseList from './ExpenseList';
 
 const CalendarView = ({ currentDate, onEdit }) => {
-  const { getExpensesByMonth, markAsPaid } = useExpenses();
+  const { getExpensesByMonth, markAsPaid, deleteExpense } = useExpenses();
   const [selectedDate, setSelectedDate] = useState(null);
 
   const year = currentDate.getFullYear();
@@ -98,6 +98,7 @@ const CalendarView = ({ currentDate, onEdit }) => {
             expenses={selectedDayExpenses}
             onMarkAsPaid={markAsPaid}
             onEdit={onEdit}
+            onDelete={deleteExpense}
           />
         </div>
       )}

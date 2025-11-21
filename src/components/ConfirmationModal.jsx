@@ -1,6 +1,6 @@
 import React from 'react';
 
-const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message }) => {
+const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = "Evet", confirmColor }) => {
   if (!isOpen) return null;
 
   return (
@@ -10,7 +10,13 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message }) => {
         <p>{message}</p>
         <div className="modal-actions">
           <button className="btn-cancel" onClick={onClose}>Hayır</button>
-          <button className="btn-confirm" onClick={() => { onConfirm(); onClose(); }}>Evet</button>
+          <button
+            className="btn-confirm"
+            onClick={() => { onConfirm(); onClose(); }}
+            style={confirmColor ? { backgroundColor: confirmColor } : {}}
+          >
+            {confirmText}
+          </button>
         </div>
       </div>
 
@@ -75,10 +81,12 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message }) => {
         .btn-cancel {
           background-color: rgba(255, 255, 255, 0.1);
           color: white;
+          border: none;
         }
         .btn-confirm {
           background-color: var(--primary-color);
           color: white;
+          border: none;
         }
         .btn-cancel:active, .btn-confirm:active {
           opacity: 0.8;

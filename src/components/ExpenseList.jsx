@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import ConfirmationModal from './ConfirmationModal';
 
-const ExpenseList = ({ expenses, onMarkAsPaid, onEdit }) => {
-  const [confirmModal, setConfirmModal] = useState({ isOpen: false, expenseId: null, title: '' });
+const ExpenseList = ({ expenses, onMarkAsPaid, onEdit, onDelete }) => {
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, expenseId: null, title: '', type: 'pay' }); // type: 'pay' | 'delete'
+  const [swipedExpenseId, setSwipedExpenseId] = useState(null);
+  const touchStartX = useRef(null);
+  const touchCurrentX = useRef(null);
 
   // Group expenses by day
   const groupedExpenses = expenses.reduce((groups, expense) => {
@@ -43,14 +46,60 @@ const ExpenseList = ({ expenses, onMarkAsPaid, onEdit }) => {
     setConfirmModal({
       isOpen: true,
       expenseId: expense.id,
-      title: expense.title
+      title: expense.title,
+      type: 'pay'
     });
   };
 
-  const handleConfirmPay = () => {
+  const handleDeleteClick = (e, expense) => {
+    e.stopPropagation();
+    setConfirmModal({
+      isOpen: true,
+      expenseId: expense.id,
+      title: expense.title,
+      type: 'delete'
+    });
+  };
+
+  const handleConfirmAction = () => {
     if (confirmModal.expenseId) {
-      onMarkAsPaid(confirmModal.expenseId);
+      if (confirmModal.type === 'pay') {
+        onMarkAsPaid(confirmModal.expenseId);
+      } else if (confirmModal.type === 'delete') {
+        if (onDelete) onDelete(confirmModal.expenseId);
+      }
     }
+    setSwipedExpenseId(null);
+  };
+
+  // Touch Handlers for Swipe
+  const onTouchStart = (e, id) => {
+    touchStartX.current = e.targetTouches[0].clientX;
+    touchCurrentX.current = e.targetTouches[0].clientX;
+  };
+
+  const onTouchMove = (e) => {
+    touchCurrentX.current = e.targetTouches[0].clientX;
+  };
+
+  const onTouchEnd = (e, id) => {
+    if (!touchStartX.current || !touchCurrentX.current) return;
+
+    const diffX = touchStartX.current - touchCurrentX.current;
+    const threshold = 50; // Minimum swipe distance
+
+    if (diffX > threshold) {
+      // Swiped Left -> Open
+      setSwipedExpenseId(id);
+    } else if (diffX < -threshold) {
+      // Swiped Right -> Close
+      if (swipedExpenseId === id) {
+        setSwipedExpenseId(null);
+      }
+    }
+
+    touchStartX.current = null;
+    touchCurrentX.current = null;
   };
 
   return (
@@ -72,33 +121,51 @@ const ExpenseList = ({ expenses, onMarkAsPaid, onEdit }) => {
 
             <div className="day-items">
               {group.items.map((expense) => (
-                <div key={expense.id} className={`expense-item-container ${expense.isPaid ? 'paid' : ''}`}>
-                  <div
-                    className="expense-item"
-                    onClick={() => onEdit(expense)}
-                  >
-                    <div className="expense-icon">
-                      {getCategoryIcon(expense.category)}
+                <div
+                  key={expense.id}
+                  className={`expense-item-wrapper ${swipedExpenseId === expense.id ? 'swiped' : ''}`}
+                  onTouchStart={(e) => onTouchStart(e, expense.id)}
+                  onTouchMove={onTouchMove}
+                  onTouchEnd={(e) => onTouchEnd(e, expense.id)}
+                >
+                  <div className={`expense-item-container ${expense.isPaid ? 'paid' : ''}`}>
+                    <div
+                      className="expense-item"
+                      onClick={() => onEdit(expense)}
+                    >
+                      <div className="expense-icon">
+                        {getCategoryIcon(expense.category)}
+                      </div>
+                      <div className="expense-details">
+                        <div className="expense-title">{expense.title}</div>
+                        <div className="expense-category">{expense.category}</div>
+                      </div>
+                      <div className="expense-amount">
+                        {formatCurrency(expense.amount, expense.currency)}
+                      </div>
                     </div>
-                    <div className="expense-details">
-                      <div className="expense-title">{expense.title}</div>
-                      <div className="expense-category">{expense.category}</div>
-                    </div>
-                    <div className="expense-amount">
-                      {formatCurrency(expense.amount, expense.currency)}
-                    </div>
+
+                    {!expense.isPaid && (
+                      <div className="item-actions">
+                        <button
+                          className="action-btn paid-btn"
+                          onClick={(e) => handlePayClick(e, expense)}
+                        >
+                          Öde
+                        </button>
+                      </div>
+                    )}
                   </div>
 
-                  {!expense.isPaid && (
-                    <div className="item-actions">
-                      <button
-                        className="action-btn paid-btn"
-                        onClick={(e) => handlePayClick(e, expense)}
-                      >
-                        Öde
-                      </button>
-                    </div>
-                  )}
+                  {/* Delete Button (Revealed on Swipe) */}
+                  <div className="delete-action">
+                    <button
+                      className="delete-btn"
+                      onClick={(e) => handleDeleteClick(e, expense)}
+                    >
+                      🗑️ Sil
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -109,14 +176,21 @@ const ExpenseList = ({ expenses, onMarkAsPaid, onEdit }) => {
       <ConfirmationModal
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
-        onConfirm={handleConfirmPay}
-        title="Harcamayı Öde"
-        message={`${confirmModal.title} giderini ödendi olarak işaretlemek istiyor musunuz?`}
+        onConfirm={handleConfirmAction}
+        title={confirmModal.type === 'pay' ? "Harcamayı Öde" : "Harcamayı Sil"}
+        message={
+          confirmModal.type === 'pay'
+            ? `${confirmModal.title} giderini ödendi olarak işaretlemek istiyor musunuz?`
+            : `${confirmModal.title} giderini kalıcı olarak silmek istiyor musunuz?`
+        }
+        confirmText={confirmModal.type === 'pay' ? "Evet, Öde" : "Evet, Sil"}
+        confirmColor={confirmModal.type === 'delete' ? 'var(--danger-color)' : 'var(--primary-color)'}
       />
 
       <style>{`
         .expense-list {
           padding: 0 20px;
+          overflow-x: hidden; /* Prevent horizontal scroll from swipe */
         }
         .empty-state {
           text-align: center;
@@ -152,13 +226,31 @@ const ExpenseList = ({ expenses, onMarkAsPaid, onEdit }) => {
           color: var(--text-secondary);
         }
         
+        /* Swipe Wrapper */
+        .expense-item-wrapper {
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 8px;
+            border-radius: var(--radius-sm);
+            background-color: var(--surface-color); /* Ensure background covers delete btn */
+        }
+
         .expense-item-container {
           display: flex;
           align-items: center;
           gap: 10px;
-          padding: 8px 0;
-          transition: opacity 0.3s;
+          padding: 12px; /* Increased padding for better touch target */
+          background-color: var(--surface-color);
+          position: relative;
+          z-index: 2; /* Above delete button */
+          transition: transform 0.3s ease-out;
+          width: 100%;
         }
+
+        .expense-item-wrapper.swiped .expense-item-container {
+            transform: translateX(-80px); /* Move left to reveal delete */
+        }
+
         .expense-item-container.paid {
           opacity: 0.5;
         }
@@ -226,6 +318,37 @@ const ExpenseList = ({ expenses, onMarkAsPaid, onEdit }) => {
           background-color: var(--success-color);
           color: white;
         }
+
+        /* Delete Action (Revealed) */
+        .delete-action {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            right: 0;
+            width: 80px; /* Match translate distance */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1;
+        }
+
+        .delete-btn {
+            width: 100%;
+            height: 100%;
+            background-color: var(--danger-color);
+            color: white;
+            border: none;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            cursor: pointer;
+        }
+        .delete-btn:active {
+            opacity: 0.8;
+        }
+
       `}</style>
     </div>
   );
