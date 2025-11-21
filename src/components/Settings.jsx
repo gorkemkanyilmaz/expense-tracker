@@ -98,6 +98,34 @@ const Settings = () => {
         </p>
       </div>
 
+      {/* Temporary Debug Section */}
+      <div className="setting-card" style={{ border: '1px dashed var(--text-secondary)' }}>
+        <div className="setting-header">
+          <div className="setting-icon">🛠️</div>
+          <div className="setting-info">
+            <h3>Test Araçları</h3>
+            <p>Geliştirme amaçlıdır</p>
+          </div>
+          <button
+            onClick={() => {
+              localStorage.removeItem('lastNotifiedDate');
+              alert('Bildirim geçmişi temizlendi. Sayfayı yenileyerek testi tekrarlayabilirsiniz.');
+            }}
+            style={{
+              padding: '8px 12px',
+              backgroundColor: 'var(--surface-color-light)',
+              border: '1px solid var(--border-color)',
+              borderRadius: 'var(--radius-sm)',
+              color: 'white',
+              fontSize: '12px',
+              cursor: 'pointer'
+            }}
+          >
+            Bildirim Testini Sıfırla
+          </button>
+        </div>
+      </div>
+
       <style>{`
         .settings-view {
           padding: 20px;
