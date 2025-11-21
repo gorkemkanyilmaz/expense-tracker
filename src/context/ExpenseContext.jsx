@@ -18,8 +18,10 @@ export const ExpenseProvider = ({ children }) => {
     }, [expenses]);
 
     // Notification Logic
+    const initialCheckDone = React.useRef(false);
+
     useEffect(() => {
-        const checkNotifications = () => {
+        const checkNotifications = (ignoreTime = false) => {
             const enabled = localStorage.getItem('notificationsEnabled') === 'true';
             console.log('[Notification] Enabled:', enabled);
             if (!enabled) return;
@@ -28,22 +30,16 @@ export const ExpenseProvider = ({ children }) => {
             const now = new Date();
             const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-
-            console.log('[Notification] Current time:', currentTime, 'Target time:', time);
+            console.log('[Notification] Current time:', currentTime, 'Target time:', time, 'Ignore Time:', ignoreTime);
 
             // Check if we're at the target time
             const [targetHour, targetMin] = time.split(':').map(Number);
             const currentHour = now.getHours();
             const currentMin = now.getMinutes();
 
-            console.log('[Notification] Target Hour:', targetHour, 'Target Min:', targetMin);
-            console.log('[Notification] Current Hour:', currentHour, 'Current Min:', currentMin);
-
             const isTimeMatch = currentHour === targetHour && currentMin === targetMin;
 
-            console.log('[Notification] Time match:', isTimeMatch, 'Hour match:', currentHour === targetHour, 'Min match:', currentMin === targetMin);
-
-            if (isTimeMatch) {
+            if (isTimeMatch || ignoreTime) {
                 const lastNotified = localStorage.getItem('lastNotifiedDate');
                 const todayStr = now.toDateString();
 
@@ -70,11 +66,11 @@ export const ExpenseProvider = ({ children }) => {
                                 tag: 'expense-reminder',
                                 requireInteraction: false
                             });
+                            // Update last notified date ONLY if notification was sent
+                            localStorage.setItem('lastNotifiedDate', todayStr);
                         } else {
                             console.log('[Notification] Permission not granted');
                         }
-
-                        localStorage.setItem('lastNotifiedDate', todayStr);
                     } else {
                         console.log('[Notification] No unpaid expenses for today');
                     }
@@ -84,11 +80,18 @@ export const ExpenseProvider = ({ children }) => {
             }
         };
 
-        // Check immediately on load
-        checkNotifications();
+        // Check immediately on load (ignoring time) if this is the first load and we have expenses
+        // This supports the "Apple Shortcut" use case where the app is opened to trigger notification
+        if (!initialCheckDone.current && expenses.length > 0) {
+            console.log('[Notification] Performing initial check on launch');
+            checkNotifications(true); // Ignore time, check immediately
+            initialCheckDone.current = true;
+        }
 
-        // Check every 10 seconds for more reliable timing
-        const interval = setInterval(checkNotifications, 10000);
+        // Check every 10 seconds for scheduled time
+        const interval = setInterval(() => {
+            checkNotifications(false); // Respect time
+        }, 10000);
 
         return () => clearInterval(interval);
     }, [expenses]);
