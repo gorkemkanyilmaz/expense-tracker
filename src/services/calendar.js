@@ -59,13 +59,10 @@ export const CalendarService = {
             const now = new Date();
             const dtstamp = now.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
 
-            const summary = method === 'CANCEL'
-                ? 'CANCELLED'
-                : `${expense.title} - ${expense.amount} ${expense.currency}`;
-
-            const description = method === 'CANCEL'
-                ? 'Cancelled'
-                : `Kategori: ${expense.category}\\nÖdeme Hatırlatması`;
+            // CRITICAL: SUMMARY must be IDENTICAL for cancellation to work
+            // Calendar apps match events by UID + DTSTART + SUMMARY
+            const summary = `${expense.title} - ${expense.amount} ${expense.currency}`;
+            const description = `Kategori: ${expense.category}\\nÖdeme Hatırlatması`;
 
             const eventLines = [
                 'BEGIN:VEVENT',
