@@ -1,10 +1,9 @@
-# Task: Fix iOS Calendar Integration
+# Task: Implement Share API for Calendar
 
-- [ ] Research/Verify iOS Calendar opening methods (Data URI vs Blob URL). <!-- id: 0 -->
-- [ ] Create a test HTML file to validate the ICS generation and opening logic locally (if possible) or simulate it. <!-- id: 1 -->
 - [ ] Modify `calendar.js`:
-    - [ ] Revert `FileReader` data URL approach (likely the cause of "Cannot download"). <!-- id: 2 -->
-    - [ ] Try `window.open(blobUrl)` which is often smoother on iOS. <!-- id: 3 -->
-    - [ ] Ensure MIME type is exactly `text/calendar`. <!-- id: 4 -->
-- [ ] Verify ICS content validity (Validators). <!-- id: 5 -->
-- [ ] Push to git only after verification. <!-- id: 6 -->
+    - [ ] Check for `navigator.canShare` support with files. <!-- id: 0 -->
+    - [ ] Implement `navigator.share({ files: [file] })`. <!-- id: 1 -->
+    - [ ] Add fallback for desktop (Anchor tag). <!-- id: 2 -->
+    - [ ] Ensure strict ICS formatting (CRLF). <!-- id: 3 -->
+- [ ] Verify build. <!-- id: 4 -->
+- [ ] Push to git. <!-- id: 5 -->

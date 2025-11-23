@@ -1,5 +1,5 @@
 export const CalendarService = {
-    addToCalendar: (expenses, time = '09:00') => {
+    addToCalendar: async (expenses, time = '09:00') => {
         if (!expenses || expenses.length === 0) return;
 
         const [hour, minute] = time.split(':');
@@ -39,10 +39,10 @@ export const CalendarService = {
             'END:VCALENDAR'
         ].join('\r\n');
 
-        CalendarService.downloadFile(calendarContent, `giderler_${new Date().getTime()}.ics`);
+        await CalendarService.shareOrDownload(calendarContent, `giderler_${new Date().getTime()}.ics`);
     },
 
-    removeFromCalendar: (expense) => {
+    removeFromCalendar: async (expense) => {
         if (!expense) return;
 
         const time = localStorage.getItem('notificationTime') || '09:00';
@@ -73,32 +73,42 @@ export const CalendarService = {
         ].join('\r\n');
 
         const safeTitle = expense.title.replace(/[^a-zA-Z0-9]/g, '_');
-        CalendarService.downloadFile(calendarContent, `sil_${safeTitle}.ics`);
+        await CalendarService.shareOrDownload(calendarContent, `sil_${safeTitle}.ics`);
     },
 
-    downloadFile: (content, filename) => {
-        // Ensure CRLF line endings for strict ICS compliance
+    shareOrDownload: async (content, filename) => {
+        // Ensure CRLF line endings
         const formattedContent = content.replace(/\n/g, '\r\n').replace(/\r\r\n/g, '\r\n');
+
+        // Create File object
+        const file = new File([formattedContent], filename, { type: 'text/calendar' });
+
+        // Try Web Share API first (Mobile/iOS)
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+                await navigator.share({
+                    files: [file],
+                    title: 'Gider Takvimi',
+                    text: 'Gider hatırlatmasını takviminize ekleyin.'
+                });
+                return;
+            } catch (error) {
+                console.log('Share failed or cancelled, falling back to download', error);
+                // Fallback to download if share fails (e.g. user cancelled)
+            }
+        }
+
+        // Fallback: Anchor Tag Download (Desktop/Unsupported Browsers)
         const blob = new Blob([formattedContent], { type: 'text/calendar;charset=utf-8' });
         const url = window.URL.createObjectURL(blob);
-
-        // iOS Safari specific handling
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-
-        if (isIOS) {
-            // On iOS, opening the blob URL directly often works best to trigger the Calendar preview
-            // without the "Download" prompt loop, though "Add to Calendar" prompt is native.
-            window.open(url, '_blank');
-        } else {
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', filename);
-            document.body.appendChild(link);
-            link.click();
-            setTimeout(() => {
-                document.body.removeChild(link);
-                window.URL.revokeObjectURL(url);
-            }, 100);
-        }
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', filename);
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        }, 100);
     }
 };
