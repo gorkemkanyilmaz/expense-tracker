@@ -93,7 +93,8 @@ export const ExpenseProvider = ({ children }) => {
     const deleteExpense = (id) => {
         const expenseToDelete = expenses.find(exp => exp.id === id);
         if (expenseToDelete) {
-            CalendarService.removeFromCalendar(expenseToDelete);
+            const notificationTime = localStorage.getItem('notificationTime') || '09:00';
+            CalendarService.removeFromCalendar(expenseToDelete, notificationTime);
         }
         setExpenses(prev => prev.filter(exp => exp.id !== id));
     };
@@ -107,7 +108,8 @@ export const ExpenseProvider = ({ children }) => {
     const markAsPaid = (id) => {
         const expenseToPay = expenses.find(exp => exp.id === id);
         if (expenseToPay) {
-            CalendarService.removeFromCalendar(expenseToPay);
+            const notificationTime = localStorage.getItem('notificationTime') || '09:00';
+            CalendarService.removeFromCalendar(expenseToPay, notificationTime);
         }
         setExpenses(prev => prev.map(exp =>
             exp.id === id ? { ...exp, isPaid: true } : exp

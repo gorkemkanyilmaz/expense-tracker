@@ -22,10 +22,11 @@ export const CalendarService = {
     /**
      * Remove expense from calendar by generating a cancellation ICS file
      * @param {Object} expense - Expense object to remove
+     * @param {string} time - Time in HH:MM format (must match original event time)
      */
-    removeFromCalendar: (expense) => {
+    removeFromCalendar: (expense, time = '09:00') => {
         try {
-            const icsContent = CalendarService.generateICS([expense], null, 'CANCEL');
+            const icsContent = CalendarService.generateICS([expense], time, 'CANCEL');
             const filename = `sil_${expense.title.replace(/[^a-zA-Z0-9]/g, '_')}.ics`;
             CalendarService.downloadICS(icsContent, filename);
         } catch (error) {
@@ -50,7 +51,7 @@ export const CalendarService = {
             const year = dateObj.getFullYear();
             const month = String(dateObj.getMonth() + 1).padStart(2, '0');
             const day = String(dateObj.getDate()).padStart(2, '0');
-            
+
             // Format: YYYYMMDDTHHMMSS (local time, no Z)
             const startDate = `${year}${month}${day}T${hour}${minute}00`;
 
@@ -58,10 +59,10 @@ export const CalendarService = {
             const now = new Date();
             const dtstamp = now.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
 
-            const summary = method === 'CANCEL' 
-                ? 'CANCELLED' 
+            const summary = method === 'CANCEL'
+                ? 'CANCELLED'
                 : `${expense.title} - ${expense.amount} ${expense.currency}`;
-            
+
             const description = method === 'CANCEL'
                 ? 'Cancelled'
                 : `Kategori: ${expense.category}\\nÖdeme Hatırlatması`;
