@@ -60,6 +60,10 @@ const Settings = () => {
       <div className="info-card warning">
         <h3>⚠️ Önemli Notlar</h3>
         <p>
+          • <strong>Aynı takvimi seçin:</strong> Gider eklerken ve silerken iPhone'da
+          <strong> aynı takvimi</strong> seçmelisiniz (örn: her ikisinde de "iCloud - Takvim").
+          Farklı takvimler seçerseniz, silme işlemi çalışmaz.
+          <br /><br />
           • Bu uygulama bir PWA (Progressive Web App) olduğu için, takvim dosyalarını
           otomatik olarak takvime ekleyemez. Her dosyayı manuel olarak açmanız gerekir.
           <br /><br />

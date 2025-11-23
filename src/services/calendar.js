@@ -72,6 +72,7 @@ export const CalendarService = {
                 'DURATION:PT1H',
                 `SUMMARY:${summary}`,
                 `DESCRIPTION:${description}`,
+                'ORGANIZER;CN=Gider Takip:mailto:noreply@expense-tracker.app',
                 `SEQUENCE:${method === 'CANCEL' ? '1' : '0'}`,
                 `STATUS:${method === 'CANCEL' ? 'CANCELLED' : 'CONFIRMED'}`,
                 'TRANSP:OPAQUE'
