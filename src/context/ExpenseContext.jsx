@@ -41,13 +41,17 @@ export const ExpenseProvider = ({ children }) => {
         };
 
         // Create the first expense
+        const titleWithCounter = isRecurring && recurrenceDuration > 1
+            ? `${title} (1/${recurrenceDuration})`
+            : title;
+
         newExpenses.push({
             id: generateId(),
             date: startDate.toISOString(),
             amount: parseFloat(amount),
             currency,
             category,
-            title,
+            title: titleWithCounter,
             isRecurring,
             recurrenceId: isRecurring ? generateId() : null,
             isPaid: false
@@ -69,13 +73,16 @@ export const ExpenseProvider = ({ children }) => {
                     nextDate.setDate(0);
                 }
 
+                // Add counter to title for recurring expenses
+                const recurringTitle = `${title} (${i + 1}/${recurrenceDuration})`;
+
                 newExpenses.push({
                     id: generateId(),
                     date: nextDate.toISOString(),
                     amount: parseFloat(amount),
                     currency,
                     category,
-                    title,
+                    title: recurringTitle,
                     isRecurring: true,
                     recurrenceId: recurrenceId,
                     isPaid: false
