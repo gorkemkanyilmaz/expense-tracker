@@ -1,8 +1,9 @@
-# Task: Fix iOS Calendar Cancellation Issues
+# Task: Fix Calendar Issues
 
-- [ ] Analyze `calendar.js` for missing required fields in cancellation event <!-- id: 0 -->
-- [ ] Update `removeFromCalendar` to include `DTSTART` (required for matching events) <!-- id: 1 -->
-- [ ] Sanitize filenames to ensure iOS compatibility (ASCII only) <!-- id: 2 -->
-- [ ] Add `SEQUENCE` number to events to ensure updates are processed <!-- id: 3 -->
-- [ ] Verify `addToCalendar` also follows best practices for updates <!-- id: 4 -->
-- [ ] Test build <!-- id: 5 -->
+- [ ] Update `calendar.js`:
+    - [ ] Remove `FileReader` hack (fixes "Invitation" prompt). <!-- id: 0 -->
+    - [ ] Use `DURATION:PT1H` instead of `DTEND` (fixes hour overflow). <!-- id: 1 -->
+    - [ ] Parse date strings manually (fixes timezone issues). <!-- id: 2 -->
+    - [ ] Ensure `UID` is clean. <!-- id: 3 -->
+- [ ] Verify build. <!-- id: 4 -->
+- [ ] Push to git. <!-- id: 5 -->
