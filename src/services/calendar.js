@@ -1,110 +1,70 @@
 export const CalendarService = {
     addToCalendar: (expenses, time = '09:00') => {
-        if (!expenses || expenses.length === 0) return;
-
-        const [hour, minute] = time.split(':');
-
-        const events = expenses.map(expense => {
-            const [year, month, day] = expense.date.split('-');
-            const startDate = `${year}${month}${day}T${hour}${minute}00`;
-
-            // ICS requires CRLF line endings
-            return [
-                'BEGIN:VEVENT',
-                `UID:${expense.id}@expense-tracker`,
-                `DTSTAMP:${new Date().toISOString().replace(/[-:.]/g, '').split('T')[0]}T000000Z`,
-                `DTSTART:${startDate}`,
-                'DURATION:PT1H',
-                `SUMMARY:${expense.title} - ${expense.amount} ${expense.currency}`,
-                `DESCRIPTION:Kategori: ${expense.category}\\nÖdeme Hatırlatması`,
-                'SEQUENCE:0',
-                'STATUS:CONFIRMED',
-                'TRANSP:OPAQUE',
-                'BEGIN:VALARM',
-                'TRIGGER:-PT0M',
-                'ACTION:DISPLAY',
-                'DESCRIPTION:Reminder',
-                'END:VALARM',
-                'END:VEVENT'
-            ].join('\r\n');
-        }).join('\r\n');
-
-        const calendarContent = [
-            'BEGIN:VCALENDAR',
-            'VERSION:2.0',
-            'PRODID:-//Expense Tracker//TR',
-            'CALSCALE:GREGORIAN',
-            'METHOD:PUBLISH',
-            events,
-            'END:VCALENDAR'
-        ].join('\r\n');
-
-        CalendarService.openCalendar(calendarContent, `giderler_${new Date().getTime()}.ics`);
+        CalendarService.downloadFromApi(expenses, time, 'publish');
     },
 
     removeFromCalendar: (expense) => {
-        if (!expense) return;
-
-        const time = localStorage.getItem('notificationTime') || '09:00';
-        const [hour, minute] = time.split(':');
-        const [year, month, day] = expense.date.split('-');
-        const startDate = `${year}${month}${day}T${hour}${minute}00`;
-
-        const event = [
-            'BEGIN:VEVENT',
-            `UID:${expense.id}@expense-tracker`,
-            `DTSTAMP:${new Date().toISOString().replace(/[-:.]/g, '').split('T')[0]}T000000Z`,
-            `DTSTART:${startDate}`,
-            'SEQUENCE:1',
-            'STATUS:CANCELLED',
-            'SUMMARY:CANCELLED',
-            'TRANSP:TRANSPARENT',
-            'END:VEVENT'
-        ].join('\r\n');
-
-        const calendarContent = [
-            'BEGIN:VCALENDAR',
-            'VERSION:2.0',
-            'PRODID:-//Expense Tracker//TR',
-            'CALSCALE:GREGORIAN',
-            'METHOD:CANCEL',
-            event,
-            'END:VCALENDAR'
-        ].join('\r\n');
-
-        const safeTitle = expense.title.replace(/[^a-zA-Z0-9]/g, '_');
-        CalendarService.openCalendar(calendarContent, `sil_${safeTitle}.ics`);
+        CalendarService.downloadFromApi([expense], null, 'cancel');
     },
 
-    openCalendar: (content, filename) => {
-        // Ensure CRLF line endings
-        const formattedContent = content.replace(/\n/g, '\r\n').replace(/\r\r\n/g, '\r\n');
+    downloadFromApi: (expenses, time, mode) => {
+        // Use a hidden form to POST data to the API and trigger a download
+        // This is the most robust way to handle file downloads in iOS PWAs
+        // as it navigates the "frame" to the file, which the OS handles.
 
-        // iOS Detection
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/api/generate-ics';
+        form.style.display = 'none';
 
-        if (isIOS) {
-            // Data URI Strategy for iOS
-            // This bypasses the download manager and opens the calendar preview directly
-            const base64Content = btoa(unescape(encodeURIComponent(formattedContent)));
-            const dataUri = `data:text/calendar;charset=utf-8;base64,${base64Content}`;
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'data'; // We'll send it as JSON string in body, but forms send key-value
+        // Actually, for JSON body we need fetch, but fetch can't trigger download easily on iOS.
+        // So we'll use fetch to get the blob? No, blob is the problem.
+        // We need the browser to navigate to the response.
 
-            // Opening in _blank is crucial for PWA to break out to System Browser/Calendar
-            window.open(dataUri, '_blank');
-        } else {
-            // Desktop/Android Fallback (Standard Download)
-            const blob = new Blob([formattedContent], { type: 'text/calendar;charset=utf-8' });
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', filename);
-            document.body.appendChild(link);
-            link.click();
-            setTimeout(() => {
-                document.body.removeChild(link);
-                window.URL.revokeObjectURL(url);
-            }, 100);
-        }
+        // Correction: Standard HTML forms send application/x-www-form-urlencoded.
+        // We need to adjust the API to handle that OR send JSON via fetch and handle blob (which fails).
+        // Best bet: Send JSON as a string in a form field, parse it on server.
+
+        // Let's adjust the API to handle JSON body (which Vercel does automatically) 
+        // BUT standard form post sends content-type application/json.
+        // HTML Forms don't send application/json.
+        // So we will use the 'fetch' approach but with a twist? No.
+
+        // The ONLY way to bypass the sandbox is a direct navigation.
+        // So form submit is correct.
+        // We will send the data as a JSON string in a field named 'json'.
+
+        // Let's update the API to handle this first? 
+        // Actually, Vercel functions handle JSON body if Content-Type is application/json.
+        // HTML Forms don't send application/json.
+        // So we will use the 'fetch' approach but with a twist? No.
+
+        // Let's stick to the form. We will send the data as a JSON string in a hidden input.
+        // We need to update the API to check for this.
+        // But wait, I can't update the API easily now without another step.
+
+        // BETTER IDEA:
+        // Use `fetch` to send the data, get a short-lived "download token" or URL? Too complex.
+
+        // Let's just use the form and send the data as JSON string.
+        // I will update the API in the next step to handle form data or JSON string.
+        // Actually, I can just send the fields as inputs?
+        // expenses is an array, complex to map to inputs.
+
+        // Let's use the JSON string approach.
+        // Input name="json" value={JSON.stringify({ expenses, time, mode })}
+
+        const jsonInput = document.createElement('input');
+        jsonInput.type = 'hidden';
+        jsonInput.name = 'json';
+        jsonInput.value = JSON.stringify({ expenses, time, mode });
+        form.appendChild(jsonInput);
+
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
     }
 };
