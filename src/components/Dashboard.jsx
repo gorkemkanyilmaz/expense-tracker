@@ -4,7 +4,7 @@ import SummaryCard from './SummaryCard';
 import ExpenseList from './ExpenseList';
 
 const Dashboard = ({ currentDate, onEdit }) => {
-    const { getExpensesByMonth, markAsPaid, deleteExpense } = useExpenses();
+    const { getExpensesByMonth, markAsPaid, markAllAsPaid, deleteExpense, deleteAllRecurring } = useExpenses();
 
     const expenses = getExpensesByMonth(currentDate.getFullYear(), currentDate.getMonth());
 
@@ -17,8 +17,10 @@ const Dashboard = ({ currentDate, onEdit }) => {
             <ExpenseList
                 expenses={expenses}
                 onMarkAsPaid={markAsPaid}
+                onMarkAllAsPaid={markAllAsPaid}
                 onEdit={onEdit}
                 onDelete={deleteExpense}
+                onDeleteAll={deleteAllRecurring}
             />
         </div>
     );

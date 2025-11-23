@@ -1,8 +1,10 @@
 import React, { useState, useRef } from 'react';
 import ConfirmationModal from './ConfirmationModal';
+import RecurringActionModal from './RecurringActionModal';
 
-const ExpenseList = ({ expenses, onMarkAsPaid, onEdit, onDelete }) => {
+const ExpenseList = ({ expenses, onMarkAsPaid, onMarkAllAsPaid, onEdit, onDelete, onDeleteAll }) => {
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, expenseId: null, title: '', type: 'pay' }); // type: 'pay' | 'delete'
+  const [recurringModal, setRecurringModal] = useState({ isOpen: false, expense: null, actionType: null }); // actionType: 'mark' | 'delete'
   const [swipedExpenseId, setSwipedExpenseId] = useState(null);
   const touchStartX = useRef(null);
   const touchCurrentX = useRef(null);
@@ -43,22 +45,42 @@ const ExpenseList = ({ expenses, onMarkAsPaid, onEdit, onDelete }) => {
 
   const handlePayClick = (e, expense) => {
     e.stopPropagation();
-    setConfirmModal({
-      isOpen: true,
-      expenseId: expense.id,
-      title: expense.title,
-      type: 'pay'
-    });
+
+    // Check if it's a recurring expense
+    if (expense.isRecurring && expense.recurrenceId) {
+      setRecurringModal({
+        isOpen: true,
+        expense: expense,
+        actionType: 'mark'
+      });
+    } else {
+      setConfirmModal({
+        isOpen: true,
+        expenseId: expense.id,
+        title: expense.title,
+        type: 'pay'
+      });
+    }
   };
 
   const handleDeleteClick = (e, expense) => {
     e.stopPropagation();
-    setConfirmModal({
-      isOpen: true,
-      expenseId: expense.id,
-      title: expense.title,
-      type: 'delete'
-    });
+
+    // Check if it's a recurring expense
+    if (expense.isRecurring && expense.recurrenceId) {
+      setRecurringModal({
+        isOpen: true,
+        expense: expense,
+        actionType: 'delete'
+      });
+    } else {
+      setConfirmModal({
+        isOpen: true,
+        expenseId: expense.id,
+        title: expense.title,
+        type: 'delete'
+      });
+    }
   };
 
   const handleConfirmAction = () => {
@@ -69,6 +91,35 @@ const ExpenseList = ({ expenses, onMarkAsPaid, onEdit, onDelete }) => {
         if (onDelete) onDelete(confirmModal.expenseId);
       }
     }
+    setConfirmModal({ ...confirmModal, isOpen: false });
+    setSwipedExpenseId(null);
+  };
+
+  const handleRecurringSingle = () => {
+    const { expense, actionType } = recurringModal;
+    if (!expense) return;
+
+    if (actionType === 'mark') {
+      onMarkAsPaid(expense.id);
+    } else if (actionType === 'delete') {
+      if (onDelete) onDelete(expense.id);
+    }
+
+    setRecurringModal({ isOpen: false, expense: null, actionType: null });
+    setSwipedExpenseId(null);
+  };
+
+  const handleRecurringAll = () => {
+    const { expense, actionType } = recurringModal;
+    if (!expense) return;
+
+    if (actionType === 'mark') {
+      if (onMarkAllAsPaid) onMarkAllAsPaid(expense.id);
+    } else if (actionType === 'delete') {
+      if (onDeleteAll) onDeleteAll(expense.id);
+    }
+
+    setRecurringModal({ isOpen: false, expense: null, actionType: null });
     setSwipedExpenseId(null);
   };
 
@@ -185,6 +236,15 @@ const ExpenseList = ({ expenses, onMarkAsPaid, onEdit, onDelete }) => {
         }
         confirmText={confirmModal.type === 'pay' ? "Evet, Öde" : "Evet, Sil"}
         confirmColor={confirmModal.type === 'delete' ? 'var(--danger-color)' : 'var(--primary-color)'}
+      />
+
+      <RecurringActionModal
+        isOpen={recurringModal.isOpen}
+        onClose={() => setRecurringModal({ isOpen: false, expense: null, actionType: null })}
+        onSingle={handleRecurringSingle}
+        onAll={handleRecurringAll}
+        actionType={recurringModal.actionType}
+        expenseTitle={recurringModal.expense?.title || ''}
       />
 
       <style>{`

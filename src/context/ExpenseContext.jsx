@@ -106,6 +106,23 @@ export const ExpenseProvider = ({ children }) => {
         setExpenses(prev => prev.filter(exp => exp.id !== id));
     };
 
+    const deleteAllRecurring = (id) => {
+        const expense = expenses.find(exp => exp.id === id);
+        if (!expense || !expense.recurrenceId) return;
+
+        const recurrenceId = expense.recurrenceId;
+        const recurringExpenses = expenses.filter(exp => exp.recurrenceId === recurrenceId);
+
+        // Remove all from calendar
+        const notificationTime = localStorage.getItem('notificationTime') || '09:00';
+        recurringExpenses.forEach(exp => {
+            CalendarService.removeFromCalendar(exp, notificationTime);
+        });
+
+        // Remove all from state
+        setExpenses(prev => prev.filter(exp => exp.recurrenceId !== recurrenceId));
+    };
+
     const updateExpense = (id, updatedData) => {
         setExpenses(prev => prev.map(exp =>
             exp.id === id ? { ...exp, ...updatedData } : exp
@@ -123,6 +140,25 @@ export const ExpenseProvider = ({ children }) => {
         ));
     };
 
+    const markAllAsPaid = (id) => {
+        const expense = expenses.find(exp => exp.id === id);
+        if (!expense || !expense.recurrenceId) return;
+
+        const recurrenceId = expense.recurrenceId;
+        const recurringExpenses = expenses.filter(exp => exp.recurrenceId === recurrenceId);
+
+        // Remove all from calendar
+        const notificationTime = localStorage.getItem('notificationTime') || '09:00';
+        recurringExpenses.forEach(exp => {
+            CalendarService.removeFromCalendar(exp, notificationTime);
+        });
+
+        // Mark all as paid
+        setExpenses(prev => prev.map(exp =>
+            exp.recurrenceId === recurrenceId ? { ...exp, isPaid: true } : exp
+        ));
+    };
+
     const getExpensesByMonth = (year, month) => {
         return expenses.filter(exp => {
             const d = new Date(exp.date);
@@ -136,7 +172,9 @@ export const ExpenseProvider = ({ children }) => {
             addExpense,
             updateExpense,
             deleteExpense,
+            deleteAllRecurring,
             markAsPaid,
+            markAllAsPaid,
             getExpensesByMonth
         }}>
             {children}
