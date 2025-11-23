@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { ExpenseProvider } from './context/ExpenseContext';
 import Dashboard from './components/Dashboard';
 import CalendarView from './components/CalendarView';
@@ -14,6 +14,10 @@ function App() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
 
+  // Swipe gesture refs
+  const touchStartX = useRef(null);
+  const touchStartY = useRef(null);
+
   const handleMonthChange = (direction) => {
     const newDate = new Date(currentDate);
     newDate.setMonth(currentDate.getMonth() + direction);
@@ -28,6 +32,42 @@ function App() {
   const handleCloseModal = () => {
     setIsAddModalOpen(false);
     setEditingExpense(null);
+  };
+
+  // Swipe gesture handlers
+  const handleTouchStart = (e) => {
+    // Only handle swipe on dashboard and calendar views, not settings
+    if (currentView === 'settings') return;
+
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e) => {
+    if (currentView === 'settings') return;
+    if (!touchStartX.current || !touchStartY.current) return;
+
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
+
+    const diffX = touchStartX.current - touchEndX;
+    const diffY = touchStartY.current - touchEndY;
+
+    // Check if horizontal swipe is dominant (not vertical scroll)
+    if (Math.abs(diffX) > Math.abs(diffY)) {
+      const threshold = 50; // Minimum swipe distance
+
+      if (diffX > threshold) {
+        // Swiped Left -> Next Month
+        handleMonthChange(1);
+      } else if (diffX < -threshold) {
+        // Swiped Right -> Previous Month
+        handleMonthChange(-1);
+      }
+    }
+
+    touchStartX.current = null;
+    touchStartY.current = null;
   };
 
   const renderContent = () => {
@@ -62,7 +102,11 @@ function App() {
           )}
         </header>
 
-        <main className="main-content">
+        <main
+          className="main-content"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
           {renderContent()}
         </main>
 
