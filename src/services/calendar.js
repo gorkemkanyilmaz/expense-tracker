@@ -64,15 +64,19 @@ export const CalendarService = {
             const summary = `${expense.title} - ${expense.amount} ${expense.currency}`;
             const description = `Kategori: ${expense.category}\\nÖdeme Hatırlatması`;
 
+            // Use more standard UID format: unique-id@domain
+            // This is more compatible with iCloud and other calendar systems
+            const uid = `expense-${expense.id}@gider-takip.app`;
+
             const eventLines = [
                 'BEGIN:VEVENT',
-                `UID:${expense.id}@expense-tracker`,
+                `UID:${uid}`,
                 `DTSTAMP:${dtstamp}`,
                 `DTSTART:${startDate}`,
                 'DURATION:PT1H',
                 `SUMMARY:${summary}`,
                 `DESCRIPTION:${description}`,
-                'ORGANIZER;CN=Gider Takip:mailto:noreply@expense-tracker.app',
+                'ORGANIZER;CN=Gider Takip:mailto:noreply@gider-takip.app',
                 `SEQUENCE:${method === 'CANCEL' ? '1' : '0'}`,
                 `STATUS:${method === 'CANCEL' ? 'CANCELLED' : 'CONFIRMED'}`,
                 'TRANSP:OPAQUE'
@@ -93,12 +97,16 @@ export const CalendarService = {
             return eventLines.join('\r\n');
         }).join('\r\n');
 
+        // Use METHOD:REQUEST for both adding and cancelling
+        // This is more compatible with iPhone Calendar than METHOD:CANCEL
+        const calendarMethod = method === 'CANCEL' ? 'REQUEST' : 'PUBLISH';
+
         const calendarLines = [
             'BEGIN:VCALENDAR',
             'VERSION:2.0',
-            'PRODID:-//Expense Tracker//TR',
+            'PRODID:-//Gider Takip//TR',
             'CALSCALE:GREGORIAN',
-            `METHOD:${method}`,
+            `METHOD:${calendarMethod}`,
             events,
             'END:VCALENDAR'
         ];
