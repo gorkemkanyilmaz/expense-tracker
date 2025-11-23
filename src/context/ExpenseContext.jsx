@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { StorageService } from '../services/storage';
+import { CalendarService } from '../services/calendar';
 
 const ExpenseContext = createContext();
 
@@ -15,110 +16,6 @@ export const ExpenseProvider = ({ children }) => {
 
     useEffect(() => {
         StorageService.saveExpenses(expenses);
-    }, [expenses]);
-
-    // Notification Logic
-    const initialCheckDone = React.useRef(false);
-
-    useEffect(() => {
-        const checkNotifications = (ignoreTime = false) => {
-            try {
-                const enabled = localStorage.getItem('notificationsEnabled') === 'true';
-                console.log('[Notification] Enabled:', enabled);
-                if (!enabled) return;
-
-                const time = localStorage.getItem('notificationTime') || '09:00';
-                const now = new Date();
-                const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-
-                console.log('[Notification] Current time:', currentTime, 'Target time:', time, 'Ignore Time:', ignoreTime);
-
-                // Check if we're at the target time
-                const [targetHour, targetMin] = time.split(':').map(Number);
-                const currentHour = now.getHours();
-                const currentMin = now.getMinutes();
-
-                const isTimeMatch = currentHour === targetHour && currentMin === targetMin;
-
-                if (isTimeMatch || ignoreTime) {
-                    const lastNotified = localStorage.getItem('lastNotifiedDate');
-                    const todayStr = now.toDateString();
-
-                    console.log('[Notification] Last notified:', lastNotified, 'Today:', todayStr);
-
-                    if (lastNotified !== todayStr) {
-                        // Check for expenses today
-                        const todayExpenses = expenses.filter(exp => {
-                            const d = new Date(exp.date);
-                            return d.toDateString() === todayStr && !exp.isPaid;
-                        });
-
-                        console.log('[Notification] Today expenses:', todayExpenses.length);
-
-                        if (todayExpenses.length > 0) {
-                            const total = todayExpenses.reduce((sum, e) => sum + e.amount, 0);
-                            const title = todayExpenses.length === 1 ? todayExpenses[0].title : `${todayExpenses.length} Adet Gider`;
-
-                            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-                                console.log('[Notification] Sending notification...');
-                                try {
-                                    // Service Worker registration check for mobile support
-                                    if (navigator.serviceWorker && navigator.serviceWorker.ready) {
-                                        navigator.serviceWorker.ready.then(registration => {
-                                            registration.showNotification('Gider Hatırlatması', {
-                                                body: `Bugün ödemeniz var: ${title} - Toplam: ${total} TL`,
-                                                icon: '/pwa-192x192.png',
-                                                tag: 'expense-reminder',
-                                                requireInteraction: false
-                                            });
-                                        });
-                                    } else {
-                                        // Fallback for desktop/simple notification
-                                        new Notification('Gider Hatırlatması', {
-                                            body: `Bugün ödemeniz var: ${title} - Toplam: ${total} TL`,
-                                            icon: '/pwa-192x192.png',
-                                            tag: 'expense-reminder',
-                                            requireInteraction: false
-                                        });
-                                    }
-
-                                    // Update last notified date ONLY if notification was sent
-                                    localStorage.setItem('lastNotifiedDate', todayStr);
-                                } catch (err) {
-                                    console.error('[Notification] Error sending notification:', err);
-                                }
-                            } else {
-                                console.log('[Notification] Permission not granted');
-                            }
-                        } else {
-                            console.log('[Notification] No unpaid expenses for today');
-                        }
-                    } else {
-                        console.log('[Notification] Already notified today');
-                    }
-                }
-            } catch (error) {
-                console.error('[Notification] Error in checkNotifications:', error);
-            }
-        };
-
-        // Check immediately on load (ignoring time) if this is the first load and we have expenses
-        // Added delay to ensure app is fully ready
-        if (!initialCheckDone.current && expenses.length > 0) {
-            console.log('[Notification] Scheduling initial check on launch...');
-            setTimeout(() => {
-                console.log('[Notification] Performing initial check now.');
-                checkNotifications(true); // Ignore time, check immediately
-                initialCheckDone.current = true;
-            }, 2000);
-        }
-
-        // Check every 10 seconds for scheduled time
-        const interval = setInterval(() => {
-            checkNotifications(false); // Respect time
-        }, 10000);
-
-        return () => clearInterval(interval);
     }, [expenses]);
 
     const addExpense = (expenseData) => {
@@ -187,9 +84,17 @@ export const ExpenseProvider = ({ children }) => {
         }
 
         setExpenses(prev => [...prev, ...newExpenses]);
+
+        // Add to Calendar
+        const notificationTime = localStorage.getItem('notificationTime') || '09:00';
+        CalendarService.addToCalendar(newExpenses, notificationTime);
     };
 
     const deleteExpense = (id) => {
+        const expenseToDelete = expenses.find(exp => exp.id === id);
+        if (expenseToDelete) {
+            CalendarService.removeFromCalendar(expenseToDelete);
+        }
         setExpenses(prev => prev.filter(exp => exp.id !== id));
     };
 
@@ -200,6 +105,10 @@ export const ExpenseProvider = ({ children }) => {
     };
 
     const markAsPaid = (id) => {
+        const expenseToPay = expenses.find(exp => exp.id === id);
+        if (expenseToPay) {
+            CalendarService.removeFromCalendar(expenseToPay);
+        }
         setExpenses(prev => prev.map(exp =>
             exp.id === id ? { ...exp, isPaid: true } : exp
         ));

@@ -1,47 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { CalendarService } from '../services/calendar';
 
 const Settings = () => {
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [notificationTime, setNotificationTime] = useState('09:00');
-  const [permissionStatus, setPermissionStatus] = useState('default');
 
   useEffect(() => {
-    const savedEnabled = localStorage.getItem('notificationsEnabled') === 'true';
     const savedTime = localStorage.getItem('notificationTime') || '09:00';
-    setNotificationsEnabled(savedEnabled);
     setNotificationTime(savedTime);
-
-    if ('Notification' in window) {
-      setPermissionStatus(Notification.permission);
-    }
   }, []);
-
-  const handleToggleNotifications = async () => {
-    if (!notificationsEnabled) {
-      // Enabling
-      if ('Notification' in window) {
-        const permission = await Notification.requestPermission();
-        setPermissionStatus(permission);
-        if (permission === 'granted') {
-          setNotificationsEnabled(true);
-          localStorage.setItem('notificationsEnabled', 'true');
-          // Test notification
-          new Notification('Bildirimler Açık', {
-            body: 'Gider hatırlatmaları bu cihazda aktif edildi.',
-            icon: '/pwa-192x192.png'
-          });
-        } else {
-          alert('Bildirim izni verilmedi. Lütfen tarayıcı ayarlarından izin verin.');
-        }
-      } else {
-        alert('Tarayıcınız bildirimleri desteklemiyor.');
-      }
-    } else {
-      // Disabling
-      setNotificationsEnabled(false);
-      localStorage.setItem('notificationsEnabled', 'false');
-    }
-  };
 
   const handleTimeChange = (e) => {
     const time = e.target.value;
@@ -55,75 +21,32 @@ const Settings = () => {
 
       <div className="setting-card">
         <div className="setting-header">
-          <div className="setting-icon">🔔</div>
+          <div className="setting-icon">📅</div>
           <div className="setting-info">
-            <h3>Bildirimler</h3>
-            <p>Günlük ödeme hatırlatmaları al</p>
+            <h3>Takvim Entegrasyonu</h3>
+            <p>Giderleriniz iPhone takviminize eklensin</p>
           </div>
-          <label className="switch">
-            <input
-              type="checkbox"
-              checked={notificationsEnabled}
-              onChange={handleToggleNotifications}
-            />
-            <span className="slider round"></span>
-          </label>
         </div>
 
-        {notificationsEnabled && (
-          <div className="time-picker-container">
-            <label>Hatırlatma Saati:</label>
-            <input
-              type="time"
-              value={notificationTime}
-              onChange={handleTimeChange}
-            />
-          </div>
-        )}
-
-        {permissionStatus === 'denied' && (
-          <div className="warning-msg">
-            ⚠️ Bildirim izni reddedildi. Ayarlardan açmanız gerekiyor.
-          </div>
-        )}
+        <div className="time-picker-container">
+          <label>Anımsatıcı Saat Kaç'ta Hatırlatma Olarak eklensin:</label>
+          <input
+            type="time"
+            value={notificationTime}
+            onChange={handleTimeChange}
+          />
+        </div>
       </div>
 
       <div className="info-card">
         <h3>Nasıl Çalışır?</h3>
         <p>
-          iPhone'da bildirim alabilmek için:
-          <br />1. Uygulamayı <strong>Ana Ekrana Ekle</strong>melisiniz.
-          <br />2. Bildirimleri buradan açmalısınız.
-          <br />3. Uygulama kapalıyken bile bildirim gelmesi için iOS kısıtlamaları nedeniyle bazen uygulamayı açmanız gerekebilir.
+          Gider eklediğinizde, seçtiğiniz saat için bir takvim dosyası oluşturulur.
+          Bu dosyayı açarak etkinliği iPhone takviminize ekleyebilirsiniz.
+          <br /><br />
+          Ödeme yaptığınızda veya gideri sildiğinizde, takvimden silinmesi için
+          yeni bir dosya oluşturulur.
         </p>
-      </div>
-
-      {/* Temporary Debug Section */}
-      <div className="setting-card" style={{ border: '1px dashed var(--text-secondary)' }}>
-        <div className="setting-header">
-          <div className="setting-icon">🛠️</div>
-          <div className="setting-info">
-            <h3>Test Araçları</h3>
-            <p>Geliştirme amaçlıdır</p>
-          </div>
-          <button
-            onClick={() => {
-              localStorage.removeItem('lastNotifiedDate');
-              alert('Bildirim geçmişi temizlendi. Sayfayı yenileyerek testi tekrarlayabilirsiniz.');
-            }}
-            style={{
-              padding: '8px 12px',
-              backgroundColor: 'var(--surface-color-light)',
-              border: '1px solid var(--border-color)',
-              borderRadius: 'var(--radius-sm)',
-              color: 'white',
-              fontSize: '12px',
-              cursor: 'pointer'
-            }}
-          >
-            Bildirim Testini Sıfırla
-          </button>
-        </div>
       </div>
 
       <style>{`
@@ -167,72 +90,27 @@ const Settings = () => {
           color: var(--text-secondary);
         }
         
-        /* Toggle Switch */
-        .switch {
-          position: relative;
-          display: inline-block;
-          width: 50px;
-          height: 28px;
-        }
-        .switch input {
-          opacity: 0;
-          width: 0;
-          height: 0;
-        }
-        .slider {
-          position: absolute;
-          cursor: pointer;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background-color: var(--surface-color-light);
-          transition: .4s;
-        }
-        .slider:before {
-          position: absolute;
-          content: "";
-          height: 20px;
-          width: 20px;
-          left: 4px;
-          bottom: 4px;
-          background-color: white;
-          transition: .4s;
-        }
-        input:checked + .slider {
-          background-color: var(--primary-color);
-        }
-        input:checked + .slider:before {
-          transform: translateX(22px);
-        }
-        .slider.round {
-          border-radius: 34px;
-        }
-        .slider.round:before {
-          border-radius: 50%;
-        }
-
         .time-picker-container {
           border-top: 1px solid var(--border-color);
           padding-top: 15px;
           display: flex;
-          justify-content: space-between;
-          align-items: center;
+          flex-direction: column;
+          gap: 10px;
+        }
+        .time-picker-container label {
+            font-size: 14px;
+            color: var(--text-secondary);
         }
         input[type="time"] {
           background-color: var(--bg-color);
           border: 1px solid var(--border-color);
           color: white;
-          padding: 8px;
+          padding: 12px;
           border-radius: var(--radius-sm);
-          width: auto;
+          width: 100%;
+          font-size: 16px;
         }
 
-        .warning-msg {
-          color: var(--danger-color);
-          font-size: 12px;
-          margin-top: 10px;
-        }
         .info-card p {
           font-size: 14px;
           color: var(--text-secondary);
