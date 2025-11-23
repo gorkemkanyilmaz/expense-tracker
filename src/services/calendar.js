@@ -23,6 +23,9 @@ export const CalendarService = {
                 `DTEND:${endDate}`,
                 `SUMMARY:${expense.title} - ${expense.amount} ${expense.currency}`,
                 `DESCRIPTION:Kategori: ${expense.category}\\nÖdeme Hatırlatması`,
+                'SEQUENCE:0',
+                'STATUS:CONFIRMED',
+                'TRANSP:OPAQUE',
                 'BEGIN:VALARM',
                 'TRIGGER:-PT0M',
                 'ACTION:DISPLAY',
@@ -48,12 +51,29 @@ export const CalendarService = {
     removeFromCalendar: (expense) => {
         if (!expense) return;
 
+        // We need to reconstruct the start time to match the original event
+        // Defaulting to 09:00 if not stored, but ideally should match what was used to create it.
+        // Since we don't store the specific time used for creation on the expense object, 
+        // we use the current setting or default. 
+        // Note: For strict matching, DTSTART is often required.
+        const time = localStorage.getItem('notificationTime') || '09:00';
+        const [hour, minute] = time.split(':');
+
+        const date = new Date(expense.date);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const startDate = `${year}${month}${day}T${hour}${minute}00`;
+
         const event = [
             'BEGIN:VEVENT',
             `UID:${expense.id}@expense-tracker`,
             `DTSTAMP:${new Date().toISOString().replace(/[-:.]/g, '').split('T')[0]}T000000Z`,
+            `DTSTART:${startDate}`,
+            'SEQUENCE:1',
             'STATUS:CANCELLED',
             'SUMMARY:CANCELLED',
+            'TRANSP:TRANSPARENT',
             'END:VEVENT'
         ].join('\n');
 
@@ -67,16 +87,30 @@ export const CalendarService = {
             'END:VCALENDAR'
         ].join('\n');
 
-        CalendarService.downloadFile(calendarContent, `sil_${expense.title.replace(/\s+/g, '_')}.ics`);
+        // Sanitize filename for iOS: only alphanumeric and underscores
+        const safeTitle = expense.title.replace(/[^a-zA-Z0-9]/g, '_');
+        CalendarService.downloadFile(calendarContent, `sil_${safeTitle}.ics`);
     },
 
     downloadFile: (content, filename) => {
         const blob = new Blob([content], { type: 'text/calendar;charset=utf-8' });
-        const link = document.createElement('a');
-        link.href = window.URL.createObjectURL(blob);
-        link.setAttribute('download', filename);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        // iOS Safari workaround for Blob downloads
+        if (navigator.userAgent.match('CriOS') || navigator.userAgent.match(/iPhone|iPad|iPod/i)) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                window.location.href = reader.result;
+            };
+            reader.readAsDataURL(blob);
+        } else {
+            const link = document.createElement('a');
+            link.href = window.URL.createObjectURL(blob);
+            link.setAttribute('download', filename);
+            document.body.appendChild(link);
+            link.click();
+            setTimeout(() => {
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(link.href);
+            }, 100);
+        }
     }
 };
