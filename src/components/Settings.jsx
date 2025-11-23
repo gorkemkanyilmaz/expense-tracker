@@ -41,11 +41,32 @@ const Settings = () => {
       <div className="info-card">
         <h3>Nasıl Çalışır?</h3>
         <p>
-          Gider eklediğinizde, seçtiğiniz saat için bir takvim dosyası oluşturulur.
+          Gider eklediğinizde, seçtiğiniz saat için bir takvim dosyası (.ics) oluşturulur.
           Bu dosyayı açarak etkinliği iPhone takviminize ekleyebilirsiniz.
           <br /><br />
+          <strong>iPhone'da:</strong>
+          <br />
+          • Dosya indirildiğinde Safari'nin alt kısmında görünecektir
+          <br />
+          • Dosyaya dokunun ve "Takvime Ekle" seçeneğini seçin
+          <br />
+          • Hatırlatma otomatik olarak takviminize eklenecektir
+          <br /><br />
           Ödeme yaptığınızda veya gideri sildiğinizde, takvimden silinmesi için
-          yeni bir dosya oluşturulur.
+          yeni bir iptal dosyası oluşturulur. Bu dosyayı da aynı şekilde açmanız gerekir.
+        </p>
+      </div>
+
+      <div className="info-card warning">
+        <h3>⚠️ Önemli Notlar</h3>
+        <p>
+          • Bu uygulama bir PWA (Progressive Web App) olduğu için, takvim dosyalarını
+          otomatik olarak takvime ekleyemez. Her dosyayı manuel olarak açmanız gerekir.
+          <br /><br />
+          • Eğer dosya indirilmiyorsa, Safari ayarlarınızdan "İndirmeler" izninin
+          açık olduğundan emin olun.
+          <br /><br />
+          • Uygulamayı Ana Ekrana ekleyerek kullanmanız önerilir (Safari'de Paylaş → Ana Ekrana Ekle).
         </p>
       </div>
 
@@ -115,6 +136,13 @@ const Settings = () => {
           font-size: 14px;
           color: var(--text-secondary);
           line-height: 1.6;
+        }
+        .info-card.warning {
+          background-color: rgba(255, 149, 0, 0.1);
+          border-left: 3px solid #ff9500;
+        }
+        .info-card.warning h3 {
+          color: #ff9500;
         }
       `}</style>
     </div>

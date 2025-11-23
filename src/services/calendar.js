@@ -1,70 +1,142 @@
+/**
+ * Calendar Service - Client-Side ICS File Generation
+ * Generates .ics calendar files directly in the browser for iOS compatibility
+ */
 export const CalendarService = {
+    /**
+     * Add expenses to calendar by generating and downloading an ICS file
+     * @param {Array} expenses - Array of expense objects to add
+     * @param {string} time - Time in HH:MM format (default: '09:00')
+     */
     addToCalendar: (expenses, time = '09:00') => {
-        CalendarService.downloadFromApi(expenses, time, 'publish');
+        try {
+            const icsContent = CalendarService.generateICS(expenses, time, 'PUBLISH');
+            const filename = `giderler_${new Date().getTime()}.ics`;
+            CalendarService.downloadICS(icsContent, filename);
+        } catch (error) {
+            console.error('Calendar add error:', error);
+            alert('Takvime eklenirken bir hata oluştu. Lütfen tekrar deneyin.');
+        }
     },
 
+    /**
+     * Remove expense from calendar by generating a cancellation ICS file
+     * @param {Object} expense - Expense object to remove
+     */
     removeFromCalendar: (expense) => {
-        CalendarService.downloadFromApi([expense], null, 'cancel');
+        try {
+            const icsContent = CalendarService.generateICS([expense], null, 'CANCEL');
+            const filename = `sil_${expense.title.replace(/[^a-zA-Z0-9]/g, '_')}.ics`;
+            CalendarService.downloadICS(icsContent, filename);
+        } catch (error) {
+            console.error('Calendar remove error:', error);
+            alert('Takvimden silinirken bir hata oluştu. Lütfen tekrar deneyin.');
+        }
     },
 
-    downloadFromApi: (expenses, time, mode) => {
-        // Use a hidden form to POST data to the API and trigger a download
-        // This is the most robust way to handle file downloads in iOS PWAs
-        // as it navigates the "frame" to the file, which the OS handles.
+    /**
+     * Generate ICS file content
+     * @param {Array} expenses - Array of expenses
+     * @param {string} time - Time in HH:MM format
+     * @param {string} method - 'PUBLISH' or 'CANCEL'
+     * @returns {string} ICS file content
+     */
+    generateICS: (expenses, time, method) => {
+        const [hour = '09', minute = '00'] = (time || '09:00').split(':');
 
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '/api/generate-ics';
-        form.style.display = 'none';
+        const events = expenses.map(expense => {
+            // Parse date from ISO string or YYYY-MM-DD format
+            const dateObj = new Date(expense.date);
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            
+            // Format: YYYYMMDDTHHMMSS (local time, no Z)
+            const startDate = `${year}${month}${day}T${hour}${minute}00`;
 
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'data'; // We'll send it as JSON string in body, but forms send key-value
-        // Actually, for JSON body we need fetch, but fetch can't trigger download easily on iOS.
-        // So we'll use fetch to get the blob? No, blob is the problem.
-        // We need the browser to navigate to the response.
+            // Generate DTSTAMP (current time in UTC)
+            const now = new Date();
+            const dtstamp = now.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
 
-        // Correction: Standard HTML forms send application/x-www-form-urlencoded.
-        // We need to adjust the API to handle that OR send JSON via fetch and handle blob (which fails).
-        // Best bet: Send JSON as a string in a form field, parse it on server.
+            const summary = method === 'CANCEL' 
+                ? 'CANCELLED' 
+                : `${expense.title} - ${expense.amount} ${expense.currency}`;
+            
+            const description = method === 'CANCEL'
+                ? 'Cancelled'
+                : `Kategori: ${expense.category}\\nÖdeme Hatırlatması`;
 
-        // Let's adjust the API to handle JSON body (which Vercel does automatically) 
-        // BUT standard form post sends content-type application/json.
-        // HTML Forms don't send application/json.
-        // So we will use the 'fetch' approach but with a twist? No.
+            const eventLines = [
+                'BEGIN:VEVENT',
+                `UID:${expense.id}@expense-tracker`,
+                `DTSTAMP:${dtstamp}`,
+                `DTSTART:${startDate}`,
+                'DURATION:PT1H',
+                `SUMMARY:${summary}`,
+                `DESCRIPTION:${description}`,
+                `SEQUENCE:${method === 'CANCEL' ? '1' : '0'}`,
+                `STATUS:${method === 'CANCEL' ? 'CANCELLED' : 'CONFIRMED'}`,
+                'TRANSP:OPAQUE'
+            ];
 
-        // The ONLY way to bypass the sandbox is a direct navigation.
-        // So form submit is correct.
-        // We will send the data as a JSON string in a field named 'json'.
+            // Add alarm for non-cancelled events
+            if (method !== 'CANCEL') {
+                eventLines.push(
+                    'BEGIN:VALARM',
+                    'TRIGGER:-PT0M',
+                    'ACTION:DISPLAY',
+                    'DESCRIPTION:Reminder',
+                    'END:VALARM'
+                );
+            }
 
-        // Let's update the API to handle this first? 
-        // Actually, Vercel functions handle JSON body if Content-Type is application/json.
-        // HTML Forms don't send application/json.
-        // So we will use the 'fetch' approach but with a twist? No.
+            eventLines.push('END:VEVENT');
+            return eventLines.join('\r\n');
+        }).join('\r\n');
 
-        // Let's stick to the form. We will send the data as a JSON string in a hidden input.
-        // We need to update the API to check for this.
-        // But wait, I can't update the API easily now without another step.
+        const calendarLines = [
+            'BEGIN:VCALENDAR',
+            'VERSION:2.0',
+            'PRODID:-//Expense Tracker//TR',
+            'CALSCALE:GREGORIAN',
+            `METHOD:${method}`,
+            events,
+            'END:VCALENDAR'
+        ];
 
-        // BETTER IDEA:
-        // Use `fetch` to send the data, get a short-lived "download token" or URL? Too complex.
+        return calendarLines.join('\r\n');
+    },
 
-        // Let's just use the form and send the data as JSON string.
-        // I will update the API in the next step to handle form data or JSON string.
-        // Actually, I can just send the fields as inputs?
-        // expenses is an array, complex to map to inputs.
+    /**
+     * Download ICS file using iOS-compatible method
+     * @param {string} content - ICS file content
+     * @param {string} filename - Filename for download
+     */
+    downloadICS: (content, filename) => {
+        try {
+            // Create blob with proper MIME type for calendar files
+            const blob = new Blob([content], { type: 'text/calendar;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
 
-        // Let's use the JSON string approach.
-        // Input name="json" value={JSON.stringify({ expenses, time, mode })}
+            // Create temporary anchor element for download
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            link.style.display = 'none';
 
-        const jsonInput = document.createElement('input');
-        jsonInput.type = 'hidden';
-        jsonInput.name = 'json';
-        jsonInput.value = JSON.stringify({ expenses, time, mode });
-        form.appendChild(jsonInput);
+            // Append to body, click, and cleanup
+            document.body.appendChild(link);
+            link.click();
 
-        document.body.appendChild(form);
-        form.submit();
-        document.body.removeChild(form);
+            // Cleanup after a short delay to ensure download starts
+            setTimeout(() => {
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }, 100);
+
+        } catch (error) {
+            console.error('Download error:', error);
+            throw new Error('Dosya indirilemedi');
+        }
     }
 };
